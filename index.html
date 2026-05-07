@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>DEGEN TRADE</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:     #0e1018;
+    --panel:  #181c26;
+    --header: #13151f;
+    --border: #23283a;
+    --green:  #0bd17e;
+    --red:    #f66257;
+    --text:   #d8dce8;
+    --muted:  #5a6070;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* ── EVENT POPUP — eigen balk, duwt de rest naar beneden ── */
+  .event-popup {
+    flex-shrink: 0;
+    overflow: hidden;
+    height: 0;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    pointer-events: none;
+    transition: height 0.3s ease;
+  }
+  .event-popup.show { height: 38px; }
+  .event-popup.pump { background: rgba(11,209,126,0.13); border-bottom: 1px solid rgba(11,209,126,0.3); }
+  .event-popup.dump { background: rgba(246,98,87,0.13);  border-bottom: 1px solid rgba(246,98,87,0.3); }
+  .ev-emoji { font-size: 17px; flex-shrink: 0; }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--header);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 16px 8px;
+    flex-shrink: 0;
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+  .pair-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .time-badge {
+    background: var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 5px;
+  }
+  .price-main {
+    font-family: 'Space Mono', monospace;
+    font-size: 30px;
+    font-weight: 700;
+    transition: color 0.2s;
+  }
+  .price-change { font-size: 14px; font-weight: 600; transition: color 0.2s; }
+  .stats-row { display: flex; gap: 20px; }
+  .stat { display: flex; flex-direction: column; gap: 1px; }
+  .stat-label { font-size: 11px; color: var(--muted); }
+  .stat-value { font-size: 12px; font-weight: 600; font-family: 'Space Mono', monospace; }
+
+  /* ── CHART ── */
+  .chart-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: var(--bg);
+    min-height: 0;
+  }
+  canvas { width: 100%; height: 100%; display: block; }
+  .price-tag {
+    position: absolute;
+    right: 4px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    pointer-events: none;
+    transform: translateY(-50%);
+    white-space: nowrap;
+  }
+
+  /* ── PORTFOLIO STRIP ── */
+  .portfolio-strip {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 7px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .port-left { display: flex; align-items: baseline; gap: 8px; }
+  .port-val  { font-family: 'Space Mono', monospace; font-size: 19px; font-weight: 700; }
+  .port-pl   { font-size: 13px; font-weight: 600; }
+  .port-right { text-align: right; }
+
+  /* ── TRADE LOG ── */
+  .trade-log {
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 4px 14px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+  }
+
+  /* ── BUTTONS ── */
+  .btn-panel {
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    padding: 10px 12px 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .btn {
+    border: none;
+    border-radius: 6px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 13px 0;
+    color: white;
+    transition: filter 0.12s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.95); filter: brightness(0.8); }
+  .btn-buy    { background: var(--green); color: #000; }
+  .btn-buyall { background: #07a060; }
+  .btn-sell   { background: var(--red); }
+  .btn-selall { background: #b03f38; }
+
+  /* ── GAME OVER ── */
+  .gameover-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(8,10,18,0.93);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s;
+  }
+  .gameover-overlay.show { opacity: 1; pointer-events: all; }
+  .gameover-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px 28px;
+    text-align: center;
+    width: 88%;
+    transform: scale(0.88);
+    transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .gameover-overlay.show .gameover-card { transform: scale(1); }
+  .go-title { font-size: 26px; font-weight: 700; margin-bottom: 4px; font-family: 'Space Mono', monospace; }
+  .go-final { font-size: 38px; font-weight: 700; font-family: 'Space Mono', monospace; margin: 10px 0 4px; }
+  .go-pl    { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+  .go-verd  { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
+  .btn-replay {
+    background: var(--green); color: #000;
+    border: none; border-radius: 8px;
+    padding: 13px 36px; font-size: 15px; font-weight: 700;
+    cursor: pointer; font-family: 'DM Sans', sans-serif;
+  }
+  .green { color: var(--green); }
+  .red   { color: var(--red); }
+</style>
+</head>
+<body>
+
+<!-- Popup: eigen flex-balk BOVEN de header, geen overlap -->
+<div class="event-popup" id="eventPopup">
+  <span class="ev-emoji" id="evEmoji">🚀</span>
+  <span id="evText">...</span>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-top">
+    <span class="pair-name" id="pairName">DOGE2/USDT</span>
+    <span class="time-badge" id="timeBadge">2:00</span>
+  </div>
+  <div class="price-row">
+    <span class="price-main red" id="priceMain">0.001000</span>
+    <span class="price-change red" id="priceChange">0.00%</span>
+  </div>
+  <div class="stats-row">
+    <div class="stat"><span class="stat-label">24h High</span><span class="stat-value" id="sHigh">0.001000</span></div>
+    <div class="stat"><span class="stat-label">24h Low</span> <span class="stat-value" id="sLow">0.001000</span></div>
+    <div class="stat"><span class="stat-label">Portfolio</span><span class="stat-value" id="sPort">$1000.00</span></div>
+  </div>
+</div>
+
+<!-- Chart -->
+<div class="chart-wrap">
+  <canvas id="chart"></canvas>
+  <div class="price-tag" id="priceTag">0.001000</div>
+</div>
+
+<!-- Portfolio -->
+<div class="portfolio-strip">
+  <div class="port-left">
+    <span class="port-val" id="portVal">$1000.00</span>
+    <span class="port-pl green" id="portPL">+0.00%</span>
+  </div>
+  <div class="port-right">
+    <div class="stat-label">Cash</div>
+    <div class="stat-value" id="portCash">$1000.00</div>
+    <div class="stat-label" style="margin-top:2px">DOGE2</div>
+    <div class="stat-value" id="portCoins">0.0000</div>
+  </div>
+</div>
+
+<!-- Trade log -->
+<div class="trade-log" id="tradeLog">Wacht op je eerste trade...</div>
+
+<!-- Knoppen -->
+<div class="btn-panel">
+  <button class="btn btn-buy"    onclick="buy(0.25)">BUY 25%</button>
+  <button class="btn btn-buy"    onclick="buy(0.50)">BUY 50%</button>
+  <button class="btn btn-buyall" onclick="buy(1)">BUY ALL</button>
+  <button class="btn btn-sell"   onclick="sell(0.25)">SELL 25%</button>
+  <button class="btn btn-sell"   onclick="sell(0.50)">SELL 50%</button>
+  <button class="btn btn-selall" onclick="sell(1)">SELL ALL</button>
+</div>
+
+<!-- Game over -->
+<div class="gameover-overlay" id="goOverlay">
+  <div class="gameover-card">
+    <div class="go-title" id="goTitle">GAME OVER</div>
+    <div class="go-final" id="goFinal">$0.00</div>
+    <div class="go-pl"    id="goPL">+0.0%</div>
+    <div class="go-verd"  id="goVerd">...</div>
+    <button class="btn-replay" onclick="restartGame()">PLAY AGAIN 🚀</button>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────
+const COIN         = 'DOGE2';
+const START_PRICE  = 0.001;
+const START_CASH   = 1000;
+const GAME_SECS    = 120;
+const TICK_MS      = 150;
+const BASE_VOL     = 0.011;
+const TREND_STR    = 0.35;
+const CANDLE_TICKS = 33;
+const CANDLE_W     = 10;
+const CANDLE_GAP   = 3;
+const MAX_CANDLES  = 80;
+
+// ── EVENTS ────────────────────────────────────────────
+const EVENTS = [
+  { emoji:'🐦', text:"Elon tweets '{C} is the future'",        pump:true,  impact:()=>rnd(30,90)  },
+  { emoji:'🐦', text:"Elon changes bio to '{C} hodler'",       pump:true,  impact:()=>rnd(20,60)  },
+  { emoji:'🏦', text:'{C} listed on Binance 🎉',               pump:true,  impact:()=>rnd(40,110) },
+  { emoji:'🏦', text:'MEXC adds {C} — trading live',           pump:true,  impact:()=>rnd(20,55)  },
+  { emoji:'🔥', text:'Binance listing rumour voor {C}',        pump:true,  impact:()=>rnd(15,45)  },
+  { emoji:'🔥', text:'Coinbase to list {C}? Sources say yes',  pump:true,  impact:()=>rnd(25,70)  },
+  { emoji:'🐳', text:'Whale buys $4.2M of {C}',               pump:true,  impact:()=>rnd(10,35)  },
+  { emoji:'🐳', text:'Institutional accumulation of {C} detected', pump:true, impact:()=>rnd(8,30) },
+  { emoji:'🌙', text:'{C} trending #1 on CoinGecko',          pump:true,  impact:()=>rnd(15,50)  },
+  { emoji:'🌙', text:'Reddit goes full ape on {C}',            pump:true,  impact:()=>rnd(20,55)  },
+  { emoji:'👑', text:'CTO buys 500B more {C}',                pump:true,  impact:()=>rnd(15,40)  },
+  { emoji:'👑', text:"CTO tweets: 'we are SO early'",         pump:true,  impact:()=>rnd(10,35)  },
+  { emoji:'🤝', text:'{C} partners with major L1 blockchain',  pump:true,  impact:()=>rnd(20,60)  },
+  { emoji:'📱', text:'TikTok influencer calls {C} "100x gem"', pump:true, impact:()=>rnd(15,50)  },
+  { emoji:'🗞️', text:'CoinDesk: {C} is undervalued gem',      pump:true,  impact:()=>rnd(12,40)  },
+  { emoji:'💀', text:'DEV WALLET DUMPS ALL {C}',              pump:false, impact:()=>rnd(70,95), rugpull:true },
+  { emoji:'💀', text:'{C} team disappears — Telegram deleted', pump:false, impact:()=>rnd(65,90), rugpull:true },
+  { emoji:'💀', text:'ALERT: {C} liquidity pool drained',      pump:false, impact:()=>rnd(60,85), rugpull:true },
+  { emoji:'📉', text:'Whale exits entire {C} position',        pump:false, impact:()=>rnd(15,45)  },
+  { emoji:'📉', text:'Massive {C} sell wall at current price', pump:false, impact:()=>rnd(10,35)  },
+  { emoji:'😱', text:'SEC opens investigation into {C}',       pump:false, impact:()=>rnd(12,35)  },
+  { emoji:'😱', text:'China bans {C} (again)',                 pump:false, impact:()=>rnd(8,25)   },
+  { emoji:'🔓', text:'{C} contract exploit — $2M drained',    pump:false, impact:()=>rnd(20,50)  },
+  { emoji:'❌', text:'Binance delists {C} — effective immediately', pump:false, impact:()=>rnd(30,60) },
+];
+
+const WIN_TEXTS  = ['Absolute degen. Respect. 🫡','You called the top. Legend.','Elon would be proud.','Bought the dip, sold the rip. 🧠'];
+const LOSS_TEXTS = ['Paper hands. Disappointing. 📄','Held through the rug pull. Classic.','You bought the top, didn\'t you.','Next time just hold cash bro.'];
+const RUG_TEXTS  = ['You got rugged. No survivors. 💀','Ser, the devs are gone.','This is why we can\'t have nice things.','Shoulda sold earlier, fren.'];
+
+function rnd(a,b){ return a + Math.random()*(b-a); }
+
+// ── STATE ─────────────────────────────────────────────
+let price, lastPrice, cash, coins, timeLeft, running;
+let sessionHigh, sessionLow;
+let noiseT, trend, trendTimer;
+let candleOpen, candleHigh, candleLow, tickCount;
+let candles = [];
+let eventTimeout, tickInterval, timerInterval;
+
+function initGame() {
+  price = lastPrice = START_PRICE;
+  cash = START_CASH; coins = 0;
+  timeLeft = GAME_SECS; running = true;
+  sessionHigh = sessionLow = price;
+  candleOpen = candleHigh = candleLow = price;
+  tickCount = 0; candles = [];
+  noiseT = Math.random()*9999; trend = 0; trendTimer = 0;
+  document.getElementById('goOverlay').classList.remove('show');
+  document.getElementById('pairName').textContent = `${COIN}/USDT`;
+  document.getElementById('tradeLog').textContent = 'Wacht op je eerste trade...';
+  document.getElementById('eventPopup').className = 'event-popup';
+  updateTimeBadge();
+  updateUI();
+  drawChart();
+}
+
+// ── NOISE ─────────────────────────────────────────────
+function noise(t){ return Math.sin(t*1.7)*0.5 + Math.sin(t*3.13)*0.3 + Math.sin(t*7.3)*0.2; }
+
+// ── TICK ──────────────────────────────────────────────
+function tick() {
+  if (!running) return;
+  tickCount++;
+  noiseT += 0.018;
+  trendTimer--;
+  if (trendTimer <= 0){ trend = Math.random()*2-1; trendTimer = Math.floor(rnd(12,60)); }
+
+  lastPrice = price;
+  const d = (noise(noiseT)*(1-TREND_STR) + trend*TREND_STR) * BASE_VOL;
+  price = Math.max(0.000001, price*(1+d));
+
+  if (price > sessionHigh) sessionHigh = price;
+  if (price < sessionLow)  sessionLow  = price;
+  if (price > candleHigh)  candleHigh  = price;
+  if (price < candleLow)   candleLow   = price;
+
+  if (tickCount % CANDLE_TICKS === 0) {
+    candles.push({ open:candleOpen, high:candleHigh, low:candleLow, close:price });
+    if (candles.length > MAX_CANDLES) candles.shift();
+    candleOpen = candleHigh = candleLow = price;
+  }
+  updateUI();
+  drawChart();
+}
+
+// ── TIMER ─────────────────────────────────────────────
+function updateTimeBadge() {
+  const m = Math.floor(timeLeft/60), s = timeLeft%60;
+  document.getElementById('timeBadge').textContent = `${m}:${s.toString().padStart(2,'0')}`;
+}
+function startTimer() {
+  timerInterval = setInterval(() => {
+    if (!running) return;
+    timeLeft--;
+    updateTimeBadge();
+    if (timeLeft <= 0) endGame(false);
+  }, 1000);
+}
+
+// ── EVENTS ────────────────────────────────────────────
+function scheduleEvent() {
+  if (!running) return;
+  eventTimeout = setTimeout(() => {
+    if (!running) return;
+    fireEvent();
+    scheduleEvent();
+  }, rnd(9000, 22000));
+}
+
+function fireEvent() {
+  const ev     = EVENTS[Math.floor(Math.random()*EVENTS.length)];
+  const impact = ev.impact();
+  const text   = ev.text.replace(/{C}/g, COIN);
+
+  // Popup tonen
+  const popup = document.getElementById('eventPopup');
+  document.getElementById('evEmoji').textContent = ev.emoji;
+  document.getElementById('evText').textContent  = text;
+  popup.className = 'event-popup show ' + (ev.pump ? 'pump' : 'dump');
+  clearTimeout(popup._t);
+  popup._t = setTimeout(() => { popup.className = 'event-popup'; }, 4500);
+
+  document.getElementById('tradeLog').textContent = `${ev.emoji} ${text}`;
+
+  if (ev.rugpull) {
+    price *= (1 - impact/100);
+    price  = Math.max(0.000001, price);
+    if (price < sessionLow) sessionLow = price;
+    setTimeout(() => endGame(true), 2200);
+    return;
+  }
+
+  price = ev.pump
+    ? price * (1 + impact/100)
+    : Math.max(0.000001, price * (1 - impact/100));
+  if (price > sessionHigh) sessionHigh = price;
+  if (price < sessionLow)  sessionLow  = price;
+}
+
+// ── TRADING ───────────────────────────────────────────
+function buy(f) {
+  if (!running || cash < 0.01) return;
+  const usd = cash*f, got = usd/price;
+  cash -= usd; coins += got;
+  document.getElementById('tradeLog').textContent = `✅ Bought ${got.toFixed(4)} ${COIN} @ $${fmt(price)}`;
+  updateUI();
+}
+function sell(f) {
+  if (!running || coins < 0.0001) return;
+  const amt = coins*f, usd = amt*price;
+  coins -= amt; cash += usd;
+  document.getElementById('tradeLog').textContent = `💸 Sold ${amt.toFixed(4)} ${COIN} @ $${fmt(price)}`;
+  updateUI();
+}
+
+// ── UI ────────────────────────────────────────────────
+function updateUI() {
+  const up  = price >= lastPrice;
+  const pct = (price - lastPrice)/lastPrice*100;
+  const col = up ? 'green' : 'red';
+
+  setEl('priceMain',  fmt(price),                      col);
+  setEl('priceChange',`${up?'+':''}${pct.toFixed(2)}%`, col);
+  setEl('sHigh', fmt(sessionHigh));
+  setEl('sLow',  fmt(sessionLow));
+
+  const port = cash + coins*price;
+  const pl   = (port - START_CASH)/START_CASH*100;
+  const pc   = pl >= 0 ? 'green' : 'red';
+
+  setEl('portVal',   `$${port.toFixed(2)}`);
+  setEl('portPL',    `${pl>=0?'+':''}${pl.toFixed(2)}%`, pc);
+  setEl('portCash',  `$${cash.toFixed(2)}`);
+  setEl('portCoins', coins.toFixed(4));
+  setEl('sPort',     `$${port.toFixed(2)}`);
+
+  const tag = document.getElementById('priceTag');
+  tag.textContent      = fmt(price);
+  tag.style.color      = `var(--${col})`;
+  tag.style.background = up ? 'rgba(11,209,126,0.15)' : 'rgba(246,98,87,0.15)';
+}
+
+function setEl(id, text, cls) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  if (cls) el.className = el.className.replace(/\bgreen\b|\bred\b/g,'').trim() + ' ' + cls;
+}
+
+// ── CHART ─────────────────────────────────────────────
+const canvas = document.getElementById('chart');
+const ctx    = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const w = canvas.parentElement;
+  canvas.width  = w.clientWidth  * devicePixelRatio;
+  canvas.height = w.clientHeight * devicePixelRatio;
+  drawChart();
+}
+
+function drawChart() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0,0,W,H);
+
+  // Gridlijnen
+  ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+  ctx.lineWidth = 1;
+  for (let i=1;i<5;i++){
+    ctx.beginPath(); ctx.moveTo(0,H*i/5); ctx.lineTo(W,H*i/5); ctx.stroke();
+  }
+
+  const all = [...candles, { open:candleOpen, high:candleHigh, low:candleLow, close:price }];
+  if (all.length < 1) return;
+
+  const dpr   = devicePixelRatio;
+  const cw    = CANDLE_W * dpr;
+  const gap   = CANDLE_GAP * dpr;
+  const step  = cw + gap;
+  const PAD_Y = 14 * dpr;
+  const PAD_R = 54 * dpr;
+
+  // Alleen zichtbare candles (van rechts)
+  const maxVis = Math.floor((W - PAD_R) / step);
+  const vis    = all.slice(-maxVis);
+
+  let mn = Infinity, mx = -Infinity;
+  vis.forEach(c => { if(c.low<mn)mn=c.low; if(c.high>mx)mx=c.high; });
+  const range = mx - mn || mn*0.01;
+
+  function toY(v){ return H - PAD_Y - ((v-mn)/range)*(H-PAD_Y*2); }
+
+  vis.forEach((c, i) => {
+    const x    = W - PAD_R - (vis.length-1-i)*step - step/2;
+    const bull = c.close >= c.open;
+    const col  = bull ? '#0bd17e' : '#f66257';
+
+    // Wick
+    ctx.strokeStyle = col;
+    ctx.lineWidth   = 1.5*dpr;
+    ctx.beginPath();
+    ctx.moveTo(x, toY(c.high));
+    ctx.lineTo(x, toY(c.low));
+    ctx.stroke();
+
+    // Body
+    const yT = toY(Math.max(c.open,c.close));
+    const yB = toY(Math.min(c.open,c.close));
+    ctx.fillStyle = col;
+    ctx.fillRect(x-cw/2, yT, cw, Math.max(2*dpr, yB-yT));
+  });
+
+  // Prijs streepjeslijn
+  const curY = toY(price);
+  const up   = price >= lastPrice;
+  ctx.strokeStyle = up ? 'rgba(11,209,126,0.4)' : 'rgba(246,98,87,0.4)';
+  ctx.lineWidth   = dpr;
+  ctx.setLineDash([4*dpr,4*dpr]);
+  ctx.beginPath(); ctx.moveTo(0,curY); ctx.lineTo(W-PAD_R+4*dpr,curY); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Prijs tag verticaal positioneren
+  const wrap = canvas.parentElement;
+  const pct  = range > 0 ? (price-mn)/range : 0.5;
+  const yPx  = wrap.clientHeight - 14 - pct*(wrap.clientHeight-28);
+  const tag  = document.getElementById('priceTag');
+  tag.style.top = Math.max(8, Math.min(wrap.clientHeight-14, yPx)) + 'px';
+}
+
+// ── GAME OVER ─────────────────────────────────────────
+function endGame(rugpull) {
+  running = false;
+  clearTimeout(eventTimeout);
+  clearInterval(timerInterval);
+  clearInterval(tickInterval);
+  if (coins > 0){ cash += coins*price; coins = 0; }
+
+  const pl  = (cash-START_CASH)/START_CASH*100;
+  const col = pl >= 0 ? '#0bd17e' : '#f66257';
+
+  let title, pool;
+  if (rugpull)     { title='RUG PULLED 💀';        pool=RUG_TEXTS;  }
+  else if(pl>20)   { title='TO THE MOON 🚀';       pool=WIN_TEXTS;  }
+  else if(pl>0)    { title='NICE GAINS 📈';         pool=WIN_TEXTS;  }
+  else if(pl>-20)  { title='REKT 😬';               pool=LOSS_TEXTS; }
+  else             { title='ABSOLUTELY REKT 💀';    pool=LOSS_TEXTS; }
+
+  document.getElementById('goTitle').textContent = title;
+  document.getElementById('goFinal').textContent = `$${cash.toFixed(2)}`;
+  document.getElementById('goFinal').style.color = col;
+  document.getElementById('goPL').textContent    = `${pl>=0?'+':''}${pl.toFixed(1)}%  ($${(cash-START_CASH).toFixed(2)})`;
+  document.getElementById('goPL').style.color    = col;
+  document.getElementById('goVerd').textContent  = pool[Math.floor(Math.random()*pool.length)];
+
+  setTimeout(() => document.getElementById('goOverlay').classList.add('show'), rugpull ? 800 : 200);
+}
+
+function restartGame() {
+  clearTimeout(eventTimeout);
+  clearInterval(timerInterval);
+  clearInterval(tickInterval);
+  initGame();
+  tickInterval = setInterval(tick, TICK_MS);
+  startTimer();
+  scheduleEvent();
+}
+
+function fmt(p){
+  if(p>=1)    return p.toFixed(4);
+  if(p>=0.01) return p.toFixed(6);
+  return p.toFixed(8);
+}
+
+// ── START ─────────────────────────────────────────────
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+initGame();
+tickInterval = setInterval(tick, TICK_MS);
+startTimer();
+scheduleEvent();
+</script>
+</body>
+</html>
