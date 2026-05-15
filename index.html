@@ -56,28 +56,6 @@
         updateBannerVisibility();
       }
 
-      // ── Chart Retard config — pas hier aan zonder rebuild ──────────────────
-      window.GAME_CONFIG = {
-        startprice:      0.001,    // startprijs van de coin
-        volatility:      0.028,    // basis volatiliteit (0.001–0.05)
-        trendstrength:   0.45,     // trend persistentie (0–1)
-        candleinterval:  5,        // seconden per candle
-        budget:          1000,     // startkapitaal speler in $
-        supply:          10000000, // circulating supply van de coin
-        honeypotchance:  0.10,     // kans op honeypot (0–1)
-        gamespeed:       4,        // in-game uren per real candle
-        eventmin:        12,       // min seconden tussen events
-        eventmax:        28,       // max seconden tussen events
-        honeypotfudmin:  20,       // min seconden voor FUD berichten beginnen
-        honeypotfudmax:  30,       // max seconden voor FUD berichten beginnen
-        honeypotdevmin:  15,       // min seconden tussen stille dev sells
-        honeypotdevmax:  35,       // max seconden tussen stille dev sells
-        drainergrace:    60,       // seconden voor wallet drainer kans begint
-        drainerscale:    240,      // seconden om max kans te bereiken
-        drainerchance:   0.03,     // max kans per check (0.03 = 3%)
-      };
-      // ───────────────────────────────────────────────────────────────────────
-
       var buildUrl = "Build";
       var loaderUrl = buildUrl + "/chartretard.loader.js";
       var config = {
